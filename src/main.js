@@ -4,7 +4,7 @@ import Vuetify from 'vuetify'
 import store from './store'
 import 'vuetify/dist/vuetify.min.css'
 
-import 'bootstrap/dist/js/bootstrap.min'
+//import 'bootstrap/dist/js/bootstrap.min'
 import './registerServiceWorker'
 import dateFilter from '@/filters/date.filter'
 import bytesToSize from '@/filters/size.filter'

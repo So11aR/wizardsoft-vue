@@ -45,8 +45,8 @@ export default new Vuex.Store({
     // Отправка задач на архивирование #26660
     async fetchArchiveTasks({ commit, getters, dispatch }, data) {
       try {
-        //const code = encodeURIComponent(document.querySelector('#snb_update_options').dataset.code)
-        const code = 222;
+        const code = encodeURIComponent(document.querySelector('#snb_update_options').dataset.code)
+        //const code = 222;
         const response = await fetch(`http://192.168.2.179/api/serial/${code}/archives/`, {
           method: 'POST',
           mode: 'cors',
@@ -86,8 +86,8 @@ export default new Vuex.Store({
     // архивированный файл
     async fetchArchive({ commit }, id = '') {
       try {
-        //const code = encodeURIComponent(document.querySelector('#snb_update_options').dataset.code)
-        const code = 222;
+        const code = encodeURIComponent(document.querySelector('#snb_update_options').dataset.code)
+        //const code = 222;
         const response = await fetch(`http://192.168.2.179/api/serial/${code}/archives/${id}`);
         const archive = await response.json();
 
@@ -107,8 +107,8 @@ export default new Vuex.Store({
     // Получение всех текущих архивов с сервера
     async fetchArchives({ commit }, id = '') {
       try {
-        //const code = encodeURIComponent(document.querySelector('#snb_update_options').dataset.code)
-        const code = 222;
+        const code = encodeURIComponent(document.querySelector('#snb_update_options').dataset.code)
+        //const code = 222;
         const response = await fetch(`http://192.168.2.179/api/serial/${code}/archives`);
         const archives = await response.json();
 
@@ -126,8 +126,8 @@ export default new Vuex.Store({
     },
     async deleteArchive({ commit }, id) {
       try {
-        const code = 222
-        //const code = encodeURIComponent(document.querySelector('#snb_update_options').dataset.code)
+        //const code = 222
+        const code = encodeURIComponent(document.querySelector('#snb_update_options').dataset.code)
         const response = await fetch(`http://192.168.2.179/api/serial/${code}/archives/${id}`, {
           method: 'DELETE',
           mode: 'cors',

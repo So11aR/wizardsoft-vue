@@ -40,12 +40,13 @@
       @create-license-archive="createLicenseTask"
       @select-all="checkboxSelectAll"
       @select-count="changeSelectCount"
+      @change-panel="changePanel"
       :archive="archive"
       :distributionId="distributionId"
       :errorText="errorText"
       :getLinks="getLinks"
       :emptyError="emptyError"
-      :selectedCheckbox="selectedCheckbox"
+      :panel="panel"
     />
   </div>
 </template>
@@ -61,6 +62,7 @@ import tabControls from "@/components/tab-controls";
 import SelectCount from "@/components/select-count";
 import Progressbar from "@/components/progressbar";
 import Links from "@/components/links";
+
 
 export default {
   name: "App",
@@ -82,6 +84,11 @@ export default {
     emptyTasks: false,
     errorText:
       "Вы не можете хранить больше 5 ссылок одновременно. Для загрузки удалите ссылку",
+    licenseTaskData: {},
+    panel: {},
+    licModIds: [],
+    panelId: null,
+    panels: [],
   }),
   components: {
     //appTableModule,
@@ -95,11 +102,53 @@ export default {
   },
   methods: {
     ...mapActions(["fetchDataBases", "fetchArchives", "fetchArchiveTasks"]),
+    changePanel(e, panels, licModIds) {
+      this.panelId = +e.target.parentElement.dataset.id;
+      this.panels = panels;
+      console.log(this.panelId);
+      console.log(this.panels);
+      //console.log(panels);
+      console.log(licModIds);
+      panels.forEach((panel) => {
+        if (this.panelId === panel.id) {
+          panel.status = !panel.status;
+          panel.current = true;
+          console.log(panel);
+          this.panel = panel;
+          this.licModIds = licModIds;
+          // const licenseTask = {
+          //   type_task: "product",
+          //   data: {
+          //     distribution: this.distributionId,
+          //     modules_licenses: this.checkboxIds,
+          //   },
+          // };
+          // utils.resetCheckbox(this.selectedCheckbox);
+          // utils.resetCheckboxAll(this.checkboxAllEl);
+          // this.checkboxIds = []
+        } else {
+          panel.current = false;
+          console.log(panel);
+          if (!panel.current) {
+            console.log(panel);
+            panel.status = false;
+            //panel.current = false;
+            if (panel.checkboxes.length) {
+              utils.resetCheckbox(panel.checkboxes);
+              licModIds.splice(0);
+              //utils.resetCheckboxAll(this.checkboxAllEl);
+
+              this.checkboxIds = [];
+            }
+            panel.distSelected = false;
+          }
+        }
+      });
+    },
     changeSelectCount(stateSelect) {
       if (stateSelect.selectedValue) {
         this.selectedCheckbox.forEach((checkbox, index) => {
           if (+checkbox.value === this.checkboxIds[index]) {
-            //console.log(checkbox);
             if (checkbox.checked) {
               checkbox.checked = false;
             }
@@ -111,19 +160,29 @@ export default {
     },
     checkboxSelectAll(event, checkboxes) {
       this.checkboxAllEl = event.target;
-      this.selectedCheckbox = checkboxes.filter((checkbox) => checkbox.checked);
-      if (this.selectedCheckbox.length) {
-        this.checkboxIds = this.selectedCheckbox.map(
-          (checkbox) => +checkbox.value
-        );
+      console.log(checkboxes);
+      if (this.checkboxAllEl.checked) {
+        this.selectedCheckbox = checkboxes.filter((checkbox) => {
+          return checkbox.checked;
+        });
+
+        if (this.selectedCheckbox.length) {
+          this.checkboxIds = this.selectedCheckbox.map(
+            (checkbox) => +checkbox.value
+          );
+        }
+        this.emptyTasks = false;
+      } else {
+        utils.resetCheckbox(this.selectedCheckbox);
+        this.checkboxIds.splice(0);
       }
     },
     checkboxCheck(e) {
       const target = e.target;
-      if (!this.checkboxIds.includes(+target.value)) {
+      if (!this.checkboxIds.includes(+target.value) && target.checked) {
         this.checkboxIds.push(+target.value);
         this.selectedCheckbox.push(target);
-        //console.log(this.selectedCheckbox);
+        // console.log(this.selectedCheckbox);
         this.emptyTasks = false;
       } else {
         //FIXME: Сделать фильтрацию чекбоксов и их id короче
@@ -135,7 +194,7 @@ export default {
         );
         this.checkboxIds.splice(index, 1);
         this.selectedCheckbox.splice(checkboxIndex, 1);
-        //console.log(this.selectedCheckbox);
+        // console.log(this.selectedCheckbox);
       }
     },
     tabActive(e) {
@@ -163,7 +222,7 @@ export default {
       };
       if (this.getArchives.length !== 5) {
         if (!this.checkboxIds.length) {
-          this.emptyErrorBase = "Для скачивания, выбериет хотябы один элемент";
+          this.emptyErrorBase = "Для скачивания, выберите хотя бы один элемент";
           this.emptyTasks = true;
           return;
         }
@@ -188,21 +247,34 @@ export default {
       utils.resetCheckboxAll(this.checkboxAllEl);
       this.taskCreated = true;
       this.checkboxIds = [];
+      this.licModIds = [];
+      //this.distributionId = null;
+      // const panelIndex = this.panels.findIndex(
+      //   (panel) => panel.id === this.panelId
+      // );
+      // this.panels[panelIndex].distSelected = false;
+      // console.log(this.panels[panelIndex]);
+      // console.log(this.panel);
     },
     async createLicenseTask() {
       const licenseTask = {
         type_task: "product",
         data: {
           distribution: this.distributionId,
-          modules_licenses: this.checkboxIds,
+          modules_licenses: this.licModIds,
         },
       };
+
       if (this.getArchives.length !== 5) {
+        console.log("click");
+        console.log(licenseTask);
+        console.log(this.licModIds);
         if (
           typeof this.distributionId === "number" &&
-          this.checkboxIds.length
+          licenseTask.data.modules_licenses.length
         ) {
           await this.saveTask(licenseTask);
+          utils.resetPanelDistSelected(this.panels, this.panelId);
           const clearTimer = await setInterval(() => {
             if (this.archive.progress === 100) {
               const lastLinkArchive = this.getLinks[this.getLinks.length - 1];
@@ -212,10 +284,9 @@ export default {
           }, 1000);
         } else if (
           typeof this.distributionId === "number" &&
-          !this.checkboxIds.length
+          !licenseTask.data.modules_licenses.length
         ) {
           licenseTask.data.distribution = this.distributionId;
-          //console.log(licenseTask);
           await this.fetchArchiveTasks(licenseTask);
           await this.fetchArchives();
           this.taskCreated = true;
@@ -227,45 +298,57 @@ export default {
             }
           }, 1000);
         } else {
-          //TODO: вызов сообщения если пользователь не выбрал модули
-          const modules = {
-            modules_licenses: this.checkboxIds,
-          };
-          licenseTask.data = modules;
-          await this.saveTask(licenseTask);
-          const clearTimer = await setInterval(() => {
-          if (this.archive.progress === 100) {
-            const lastLinkArchive = this.getLinks[this.getLinks.length - 1];
-            this.downloadFile(lastLinkArchive, this.archive.archive_name);
-            clearTimeout(clearTimer);
+          //TODO: сделать обработку отправки на сервер, когда выбрано "не скачивать дистрибутив"
+
+          if (isNaN(this.distributionId) && this.licModIds.length) {
+            const modules = {
+              modules_licenses: this.licModIds,
+            };
+            licenseTask.data = modules;
+            delete licenseTask.distribution
+            await this.saveTask(licenseTask);
+            // utils.resetPanelDistSelected(this.panels, this.panelId);
+            //FIXME:Добавтить код ниже вместо сброса через утилиты
+            // const panelIndex = panels.findIndex(
+            // 	(panel) => panel.id === panelId
+            // );
+            // panels[panelIndex].distSelected = false;
+            const clearTimer = await setInterval(() => {
+              if (this.archive.progress === 100) {
+                const lastLinkArchive = this.getLinks[this.getLinks.length - 1];
+                this.downloadFile(lastLinkArchive, this.archive.archive_name);
+                clearTimeout(clearTimer);
+              }
+            }, 1000);
+            this.emptyError = this.getMessageError;
+            console.log("Выберите дистрибутив");
+            this.emptyTasks = false;
+          } else {
+            console.log("Выберите хотя бы один элемент");
           }
-        }, 1000);
-          this.emptyError = this.getMessageError;
-          //console.log(this.emptyError);
-          console.log("Выберите дистрибутив");
         }
       } else {
         this.errorText =
           "Нельзя создать больше пяти задач от серийного номера.";
-        utils.resetCheckbox(this.selectedCheckbox);
-        utils.resetCheckboxAll(this.checkboxAllEl);
+        // utils.resetCheckbox(this.selectedCheckbox);
+        // utils.resetCheckboxAll(this.checkboxAllEl);
       }
     },
   },
   async mounted() {
     await this.fetchArchives();
+    console.log(this.selectedCheckbox);
   },
   computed: mapGetters([
     "archive",
     "getLinks",
     "getArchives",
-    "getTaskCreated",
     "getMessageError",
   ]),
 };
 </script>
 
 <style lang="scss">
-@import "~bootstrap/dist/css/bootstrap.min.css";
-@import url("./assets/css/style.css");
+//@import "~bootstrap/dist/css/bootstrap.min.css";
+//@import url("./assets/css/style.css");
 </style>

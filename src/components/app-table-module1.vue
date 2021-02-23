@@ -22,28 +22,27 @@
         <selectCount @select-count="changeSelectCount" />
       </div>
       <v-expansion-panels>
-       
         <v-expansion-panel
-          v-for="(item) in pages[offset]"
+          v-for="(item, index) in pages[offset]"
           :key="item.id"
           :data-id="item.id"
-          
           @click="test"
           ref="expPanel"
         >
-        
           <v-expansion-panel-header>{{ item.name }}</v-expansion-panel-header>
           <v-expansion-panel-content>
             <selectDistribution
-              :item="item"
               @change-distribution="changeDistributionSelect"
+              :item="item"
             />
-
+        
+          
             <tableLicenses
               @checkbox-all="selectAll"
               @select-checkbox="selectCheckbox"
               :item="item"
               :loading="loading"
+              v-if="panels.length && panels[index].distSelected"
             />
           </v-expansion-panel-content>
         </v-expansion-panel>
@@ -129,6 +128,8 @@ export default {
     },
     disabledDownloadButton: false,
     panels: [],
+    panelId: null,
+    licenseModulesIds: [],
   }),
   components: {
     preloader,
@@ -139,23 +140,20 @@ export default {
   props: {
     archive: {
       type: Object,
-      required: true,
+      required: true
     },
     distributionId: {
-      required: true,
+      required: true
     },
     errorText: {
       type: String,
-      required: true,
+      required: true
     },
     getLinks: {
-      required: true,
+      required: true
     },
     emptyError: {
-      required: true,
-    },
-    selectedCheckbox: {
-      required: true,
+      required: true
     }
   },
   computed: {
@@ -187,33 +185,48 @@ export default {
       this.splitPages();
     },
     test(e) {
-      //console.log(e.target.parentElement.dataset.id);
-      const panelId = +e.target.parentElement.dataset.id;
-      //console.log(this.panels);
-      this.panels.forEach((panel) => {
-        if (panelId === panel.id) {
-          panel.status = !panel.status;
-          //console.log(panel);
-        } else {
-          panel.status = false
-          if(this.selectedCheckbox.length) {
-            utils.resetCheckbox(this.selectedCheckbox)
-            this.selectedCheckbox = []
-          }
-          console.log(this.selectedCheckbox);
-          // let previousPanel = panel.id
-          // console.log(previousPanel);          
-        }
-         
-      });
+      this.$emit("change-panel", e, this.panels, this.licenseModulesIds);
+      this.panelId = +e.target.parentElement.dataset.id;
+      console.log(this.panels);
+      console.log(this.licenseModulesIds);
     },
     selectCheckbox(e) {
       this.$emit("select-checkbox", e);
-      
+      const target = e.target;
+      const moduleId = +target.value;
+      const panelIndex = this.panels.findIndex(
+        (panel) => panel.id === this.panelId
+      );
+      // console.log(panelIndex);
+      if (this.panels[panelIndex].status) {
+        if (!this.licenseModulesIds.includes(moduleId)) {
+          this.licenseModulesIds.push(moduleId);
+          this.panels[panelIndex].checkboxes.push(target);
+          //console.log(this.panels[panelIndex].checkboxes);
+          //console.log(this.licenseModulesIds);
+        } else {
+          const checkboxIndex = this.panels[panelIndex].checkboxes.findIndex(
+            (checkbox) => +checkbox.value === +target.value
+          );
+          const moduleIndex = this.licenseModulesIds.findIndex(
+            (id) => id === moduleId
+          );
+          this.panels[panelIndex].checkboxes.splice(checkboxIndex, 1);
+          this.licenseModulesIds.splice(moduleIndex, 1);
+          //console.log(this.panels[panelIndex].checkboxes);
+          //console.log(this.licenseModulesIds);
+        }
+      }
     },
-    changeDistributionSelect(distId, distSelected) {
-      this.$emit("change-distribution", distId);
-      console.log(distSelected);
+    changeDistributionSelect(distId) {
+      const panelIndex = this.panels.findIndex(panel => panel.id === this.panelId)
+      this.panels[panelIndex].distSelected = true
+      this.$emit("change-distribution", distId, this.panels[panelIndex].distSelected);
+      
+      console.log(panelIndex);
+      
+      // console.log(distSelected);
+      // console.log(distId);
     },
     splitPages() {
       this.totalPages = Math.ceil(this.getDataLicenses.length / this.limit);
@@ -241,6 +254,24 @@ export default {
         checkbox.checked = e.target.checked;
         return checkbox;
       });
+      const panelIndex = this.panels.findIndex(
+        (panel) => panel.id === this.panelId
+      );
+      if (e.target.checked) {
+        this.panels[panelIndex].checkboxes = checkboxes;
+        this.panels[panelIndex].checkboxes.forEach(checkbox => {
+          this.licenseModulesIds.push(+checkbox.value)
+        })
+        console.log(this.licenseModulesIds);
+        console.log(this.panels[panelIndex]);
+      } else {
+        //this.panels[panelIndex].checkboxes.forEach(checkbox => {})
+        utils.resetCheckbox(this.panels[panelIndex].checkboxes)
+        this.licenseModulesIds = []
+        console.log(this.licenseModulesIds);
+        console.log(this.panels[panelIndex]);
+      }
+
       this.$emit("select-all", e, checkboxes);
     },
   },
@@ -252,7 +283,9 @@ export default {
       //console.log(element.$attrs);
       this.panels.push({
         id: element.$attrs["data-id"],
+        checkboxes: [],
         status: false,
+        distSelected: false
       });
       //panelAttrs.push(element.$attrs['data-id'])
       //console.log(element.$attrs['data-id']);
